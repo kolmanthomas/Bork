@@ -1,14 +1,18 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 #include <Eigen/Dense>
+#include <Eigen/Geometry>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #include <iostream>
+#include <iomanip>
 #include <stdexcept>
 
-#include "utils/logging.hpp"
-#include "utils/debugging.hpp"
-#include "input/keyboard.hpp"
+#include "window.hpp"
+#include "image.hpp"
 #include "renderer/shader.hpp"
+#include "math/matrix_transforms.hpp"
 
 using namespace Eigen;
 
@@ -17,22 +21,26 @@ class Main
 public:
 	void run() 
 	{
-		init_GLFW();
-		init_GLEW();
-		utils::init_logger();
+		init();
 		main_loop();
-		clean();
+	}
+
+	~Main()
+	{
+		glfwTerminate();
 	}
 private:
 	const std::string vs_path = "../../src/shaders/vs.vert";
 	const std::string fs_path = "../../src/shaders/fs.frag";
 
-	GLFWwindow* window;
+	const int width = 1024;
+	const int height = 768;
+
 	GLuint programID;
 
 	void main_loop() 
 	{
-		glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
+		bork::Window window(1024, 768);
 
 		glClearColor(0.0f, 0.0f, 0.4f, 0.0f);
 
@@ -40,6 +48,22 @@ private:
 		glGenVertexArrays(1, &VertexArrayID);
 		glBindVertexArray(VertexArrayID);
 
+		bork::Shader shader;
+		programID = shader.LoadShaders(vs_path.data(), fs_path.data());
+
+		std::string path = "../../assets/eo4qjv87.bmp";
+		bork::BMP texture = bork::loadBMP(path);
+
+		GLuint textureID;
+		glGenTextures(1, &textureID);
+		glBindTexture(GL_TEXTURE_2D, textureID);
+		std::cout << texture.data.data() << std::endl;
+		glTexImage2D(GL_TEXTURE_2D, 0,GL_RGB, texture.width, texture.height, 0, GL_BGR, GL_UNSIGNED_BYTE, texture.data.data());
+		std::cout << "Got here!" << std::endl;
+
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		/*
 		programID = glCreateProgram();
 		nmn::Shader shader;
 		GLuint vertex_shader = shader.load_shader(nmn::shader_type_vertex, vs_path); 
@@ -65,93 +89,64 @@ private:
 		}
 		glDetachShader(programID, vertex_shader);
 		glDetachShader(programID, fragment_shader);
+		*/
+
 
 
 		// Components of the model matrix
 
-		Matrix<float, 4, 4, RowMajor> scale {
-			{0.5f, 0.0f, 0.0f, 0.0f},
-			{0.0f, 0.5f, 0.0f, 0.0f},
-			{0.0f, 0.0f, 0.5f, 0.0f},
-			{0.0f, 0.0f, 0.0f, 1.0f}
-		};
+		Transform<GLfloat, 3, Affine> model = bork::model_matrix(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f);
+		Transform<GLfloat, 3, Affine> view = bork::look_at_matrix(
+				Vector<GLfloat, 3> {4, 3, 3}, 
+				Vector<GLfloat, 3> {0, 0, 0},
+				Vector<GLfloat, 3> {0, 1, 0}
+		);
+		Transform<GLfloat, 3, Projective> projection = bork::perspective_matrix(
+			static_cast<GLfloat> (std::numbers::pi) / static_cast<GLfloat> (4), 
+			static_cast<GLfloat> (width) / static_cast<GLfloat> (height), 
+			static_cast<GLfloat> (0.1), 
+			static_cast<GLfloat> (100)	
+		);
 
-		Matrix<float, 4, 4, RowMajor> rotate {
-			{1.0f, 0.0f, 0.0f, 0.0f},
-			{0.0f, 1.0f, 0.0f, 0.0f},
-			{0.0f, 0.0f, 1.0f, 0.0f},
-			{0.0f, 0.0f, 0.0f, 1.0f}
-		};
+		Matrix<GLfloat, 4, 4> mvp = projection.matrix() * view.matrix() * model.matrix();
 
-		Matrix<GLfloat, 4, 4, RowMajor> translate {
-			{1.0f, 0.0f, 0.0f, 0.0f},
-			{0.0f, 1.0f, 0.0f, 0.0f},
-			{0.0f, 0.0f, 1.0f, 0.0f},
-			{0.0f, 0.0f, 0.0f, 1.0f}
-		};
-
-		Matrix<GLfloat, 4, 4, RowMajor> model {
-			{1.0f, 0.0f, 0.0f, 0.0f},
-			{0.0f, 1.0f, 0.0f, 0.0f},
-			{0.0f, 0.0f, 1.0f, 0.0f},
-			{0.0f, 0.0f, 0.0f, 1.0f},
-		};
-
-		Matrix<GLfloat, 4, 4, RowMajor> view {
-			{1.0f, 0.0f, 0.0f, -4.0f},
-			{0.0f, 1.0f, 0.0f, -4.0f},
-			{0.0f, 0.0f, 1.0f, -3.0f},
-			{0.0f, 0.0f, 0.0f, 1.0f},
-		};
-
-		/*
-		// Camera matrix
-		Matrix<float, 4, 4, RowMajor> projection {
-			{4.0f, 3.0f, 3.0f, 0.0f},
-			{0.0f, 0.0f, 0.0f, 0.0f},
-			{0.0f, 1.0f, 0.0f, 0.0f},
-			{0.0f, 0.0f, 0.0f, 1.0f}
-		};
-
-		GLuint mvpID = glGetUniformLocation(programID, "MVP"); 
-
-		Matrix<float, 36, 4, RowMajor> vbd {
-			{-1.0f,-1.0f,-1.0f, 1.0f}, // triangle 1 : begin
-			{-1.0f,-1.0f, 1.0f, 1.0f},
-			{-1.0f, 1.0f, 1.0f, 1.0f}, // triangle 1 : end
-			{1.0f, 1.0f,-1.0f, 1.0f}, // triangle 2 : begin
-			{-1.0f,-1.0f,-1.0f, 1.0f},
-			{-1.0f, 1.0f,-1.0f, 1.0f}, // triangle 2 : end
-			{1.0f,-1.0f, 1.0f, 1.0f},
-			{-1.0f,-1.0f,-1.0f, 1.0f},
-			{1.0f,-1.0f,-1.0f, 1.0f},
-			{1.0f, 1.0f,-1.0f, 1.0f},
-			{1.0f,-1.0f,-1.0f, 1.0f},
-			{-1.0f,-1.0f,-1.0f, 1.0f},
-			{-1.0f,-1.0f,-1.0f, 1.0f},
-			{-1.0f, 1.0f, 1.0f, 1.0f},
-			{-1.0f, 1.0f,-1.0f, 1.0f},
-			{1.0f,-1.0f, 1.0f, 1.0f},
-			{-1.0f,-1.0f, 1.0f, 1.0f},
-			{-1.0f,-1.0f,-1.0f, 1.0f},
-			{-1.0f, 1.0f, 1.0f, 1.0f},
-			{-1.0f,-1.0f, 1.0f, 1.0f},
-			{1.0f,-1.0f, 1.0f, 1.0f},
-			{1.0f, 1.0f, 1.0f, 1.0f},
-			{1.0f,-1.0f,-1.0f, 1.0f},
-			{1.0f, 1.0f,-1.0f, 1.0f},
-			{1.0f,-1.0f,-1.0f, 1.0f},
-			{1.0f, 1.0f, 1.0f, 1.0f},
-			{1.0f,-1.0f, 1.0f, 1.0f},
-			{1.0f, 1.0f, 1.0f, 1.0f},
-			{1.0f, 1.0f,-1.0f, 1.0f},
-			{-1.0f, 1.0f,-1.0f, 1.0f},
-			{1.0f, 1.0f, 1.0f, 1.0f},
-			{-1.0f, 1.0f,-1.0f, 1.0f},
-			{-1.0f, 1.0f, 1.0f, 1.0f},
-			{1.0f, 1.0f, 1.0f, 1.0f},
-			{-1.0f, 1.0f, 1.0f, 1.0f},
-			{1.0f,-1.0f, 1.0f, 1.0f}
+		Matrix<float, 36, 3, RowMajor> vbd {
+			{-1.0f,-1.0f,-1.0f}, // triangle 1 : begin
+			{-1.0f,-1.0f, 1.0f},
+			{-1.0f, 1.0f, 1.0f}, // triangle 1 : end
+			{1.0f, 1.0f,-1.0f}, // triangle 2 : begin
+			{-1.0f,-1.0f,-1.0f},
+			{-1.0f, 1.0f,-1.0f}, // triangle 2 : end
+			{1.0f,-1.0f, 1.0f},
+			{-1.0f,-1.0f,-1.0f},
+			{1.0f,-1.0f,-1.0f},
+			{1.0f, 1.0f,-1.0f},
+			{1.0f,-1.0f,-1.0f},
+			{-1.0f,-1.0f,-1.0f},
+			{-1.0f,-1.0f,-1.0f},
+			{-1.0f, 1.0f, 1.0f},
+			{-1.0f, 1.0f,-1.0f},
+			{1.0f,-1.0f, 1.0f},
+			{-1.0f,-1.0f, 1.0f},
+			{-1.0f,-1.0f,-1.0f},
+			{-1.0f, 1.0f, 1.0f},
+			{-1.0f,-1.0f, 1.0f},
+			{1.0f,-1.0f, 1.0f},
+			{1.0f, 1.0f, 1.0f},
+			{1.0f,-1.0f,-1.0f},
+			{1.0f, 1.0f,-1.0f},
+			{1.0f,-1.0f,-1.0f},
+			{1.0f, 1.0f, 1.0f},
+			{1.0f,-1.0f, 1.0f},
+			{1.0f, 1.0f, 1.0f},
+			{1.0f, 1.0f,-1.0f},
+			{-1.0f, 1.0f,-1.0f},
+			{1.0f, 1.0f, 1.0f},
+			{-1.0f, 1.0f,-1.0f},
+			{-1.0f, 1.0f, 1.0f},
+			{1.0f, 1.0f, 1.0f},
+			{-1.0f, 1.0f, 1.0f},
+			{1.0f,-1.0f, 1.0f}
 		};
 
 		Matrix<float, 36, 3, RowMajor> cbd {
@@ -193,20 +188,11 @@ private:
 			{0.982f,  0.099f,  0.879f}
 		};
 
-		*/
-		Matrix<GLfloat, 3, 3, RowMajor> vbd {
-			{-1.0f, -1.0f, 0.0f},
-			{1.0f, -1.0f, 0.0f},
-			{0.0f,  1.0f, 0.0f},
-		};
-
-		
-
 		/*
-		Matrix<GLfloat, 3, 3, RowMajor> cbd {
-			{1.0, 0.0, 0.0},
-			{0.0, 1.0, 0.0},
-			{0.0, 0.0, 1.0}
+		Matrix<GLfloat, 3, 3> vbd {
+			{-1.0f, 0.0f, 1.0f},
+			{-1.0f, 1.0f, -1.0f},
+			{0.0f, 0.0f, 0.0f}
 		};
 		*/
 
@@ -215,24 +201,22 @@ private:
 		glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * vbd.size(), vbd.data(), GL_STATIC_DRAW);
 
-		std::cout << "Got here!" << std::endl;
 
-		/*
+		GLuint matrixID = glGetUniformLocation(programID, "MVP");
+
 		GLuint colorbuffer;
 		glGenBuffers(1, &colorbuffer);
 		glBindBuffer(GL_ARRAY_BUFFER, colorbuffer);
 		glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat) * cbd.size(), cbd.data(), GL_STATIC_DRAW);
-		*/
 		
-		
-		while (!glfwWindowShouldClose(window)) {
+		while (!window.is_closed()) {
 			// Clear the screen
 			glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 			// Use our shader
 			glUseProgram(programID);
 
-			//glUniformMatrix4fv(, 1, GL_FALSE, scale.data());
+			glUniformMatrix4fv(matrixID, 1, GL_FALSE, mvp.data());
 
 			// 1rst attribute buffer : vertices
 			glEnableVertexAttribArray(0);
@@ -246,7 +230,6 @@ private:
 				(void*)0            // array buffer offset
 			);
 
-			/*
 			glEnableVertexAttribArray(1);
 			glBindBuffer(GL_ARRAY_BUFFER, colorbuffer);
 			glVertexAttribPointer(
@@ -257,79 +240,31 @@ private:
 				0,
 				(void*)0
 			);
-			*/
 		
 
 			// Draw the triangle !
-			glDrawArrays(GL_TRIANGLES, 0, 3); // 3 indices starting at 0 -> 1 triangle
+			glDrawArrays(GL_TRIANGLES, 0, 12*3); // 3 indices starting at 0 -> 1 triangle
 			glDisableVertexAttribArray(0);
-			//glDisableVertexAttribArray(1);
-			glfwSwapBuffers(window);
-			glfwPollEvents();
+			glDisableVertexAttribArray(1);
+
+			window.update();
 		}
 		glDeleteBuffers(1, &vertexbuffer);
 		glDeleteVertexArrays(1, &VertexArrayID);
+		/*
 		glDeleteShader(vertex_shader);
 		glDeleteShader(fragment_shader);
+		*/
 		glDeleteProgram(programID);
 	}
 
-	void init_GLFW()
+	void init()
 	{
 		if (!glfwInit()) {
 			throw std::runtime_error("Failed to initialize GLFW");
 		} 
-		glfwWindowHint(GLFW_SAMPLES, 4);
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-		glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
-		glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
-		glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-		glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);
-
-
-		GLint flag;
-		glGetIntegerv(GL_CONTEXT_FLAGS, &flag);
-		if (flag & GL_CONTEXT_FLAG_DEBUG_BIT) {
-			glEnable(GL_DEBUG_OUTPUT);
-			glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-			glDebugMessageCallback(glDebugOutput, nullptr);
-			glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, 0, nullptr, GL_TRUE);
-		}
-
-		window = glfwCreateWindow(1024, 768, "Flappy Bird", nullptr, nullptr);
-
-		if (window == nullptr) {
-			throw std::runtime_error("Failed to create window.");
-		}
-
-		glfwSetKeyCallback(window, key_callback);
-		glfwMakeContextCurrent(window);
 	}	
 
-	void init_GLEW()
-	{
-		glewExperimental = true;
-		if (glewInit() != GLEW_OK) {
-			throw std::runtime_error("Failed to initialize GLEW");
-		} 
-	}
-
-	template<typename T>
-	void print_2darray(T *arr, int m, int n)
-	{
-		for (int i = 0; i < m; i++) {
-			for (int j = 0; j < n; j++) {
-				std::cout << *(arr + (i * n) + j) << " ";
-			}
-			std::cout << std::endl;
-		}
-
-	}
-
-	void clean()
-	{
-		glfwTerminate();
-	}
 };
 
 int main()

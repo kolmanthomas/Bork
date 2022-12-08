@@ -1,9 +1,10 @@
 #version 460 core
 #pragma fragment
 
-layout(location = 0) out vec4 color;
+in vec3 fragment_color;
+out vec3 color;
 
 void main()
 {
-	color = vec4(1, 0, 0, 0);
+	color = fragment_color;
 }

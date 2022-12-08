@@ -7,14 +7,15 @@
 #define SPDLOG_FMT_EXTERNAL 0
 # -lboost_log, -lVulkan, -lglfw, -ldl, -lpthread, -lX11, -lXxf86vm, -lXrandr, -lXi
 
-add_executable(nmn
+add_executable(bork
 	main.cpp 
-	utils/logging.cpp
+	window.cpp
+	image.cpp
 	utils/debugging.cpp
 	input/keyboard.cpp
 	renderer/shader.cpp
 )
-target_include_directories(nmn PRIVATE "")
+target_include_directories(bork PRIVATE "")
 
 
 #[[
@@ -34,13 +35,15 @@ find_package(OpenGL REQUIRED)
 find_package(GLEW REQUIRED) 
 find_package(glfw3 REQUIRED) 
 find_package(Eigen3 3.4 REQUIRED NO_MODULE)
+find_package(glm REQUIRED)
 
-target_link_libraries(nmn PUBLIC 
+target_link_libraries(bork PUBLIC 
 	OpenGL
 	GLEW::GLEW	
 	glfw
 	Eigen3::Eigen
 	spdlog::spdlog
 	shaderc_shared
+	glm::glm
 )
 #target_compile_definitions(fb PRIVATE SPDLOG_FMT_EXTERNAL) 

@@ -2,12 +2,10 @@
 
 #include <iostream>
 
-namespace nmn {
+namespace bork {
 
-/*
 GLuint Shader::LoadShaders(const char * vertex_file_path,const char * fragment_file_path)
 {
-
 	// Create the shaders
 	GLuint VertexShaderID = glCreateShader(GL_VERTEX_SHADER);
 	GLuint FragmentShaderID = glCreateShader(GL_FRAGMENT_SHADER);
@@ -93,7 +91,6 @@ GLuint Shader::LoadShaders(const char * vertex_file_path,const char * fragment_f
 
 	return ProgramID;
 }
-*/
 
 std::vector<uint32_t> Shader::compile_glsl_to_spirv(shader_type st, std::string const& filepath)
 {

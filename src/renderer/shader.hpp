@@ -12,8 +12,7 @@
 
 #include "../utils/debugging.hpp"
 
-
-namespace nmn {
+namespace bork {
 
 enum shader_type {
 	shader_type_vertex,
@@ -27,8 +26,8 @@ public:
 	Shader();
 	Shader(shader_type st, std::string const& filepath);
 	~Shader();
-	static GLuint LoadShaders(const char* vertex_file_path, const char* fragment_file_path);
 	*/
+	static GLuint LoadShaders(const char* vertex_file_path, const char* fragment_file_path);
 
 	std::vector<uint32_t> compile_glsl_to_spirv(shader_type st, std::string const& filepath);
 	GLuint load_shader(shader_type st, std::string const& filepath);
