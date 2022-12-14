@@ -1,10 +1,13 @@
 #version 460 core
 #pragma fragment
 
-in vec3 fragment_color;
+in vec2 UV;
+
 out vec3 color;
+
+uniform sampler2D myTextureSampler;
 
 void main()
 {
-	color = fragment_color;
+	color = texture(myTextureSampler, UV).rgb;
 }

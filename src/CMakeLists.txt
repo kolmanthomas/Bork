@@ -14,6 +14,7 @@ add_executable(bork
 	utils/debugging.cpp
 	input/keyboard.cpp
 	renderer/shader.cpp
+	glfw/glfw_window.cpp
 )
 target_include_directories(bork PRIVATE "")
 

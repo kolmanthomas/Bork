@@ -6,7 +6,6 @@ namespace bork {
 
 std::vector<unsigned char> load_binary_file(std::string const& filepath)
 {
-	std::cout << "Here!" << std::endl;
 	std::ifstream file(filepath, std::ios::binary | std::ios::ate);
 
 	if (!file.is_open()) {
@@ -48,16 +47,15 @@ BMP loadBMP(std::string const& filepath)
 		throw std::runtime_error("Not a BMP file!");
 	}
 
+	uint32_t offset = convert_bytes_to_int32(image.begin() + 0x0A);
+	uint32_t width = convert_bytes_to_int32(image.begin() + 0x12);
+	uint32_t height = convert_bytes_to_int32(image.begin() + 0x16);
 	uint32_t size = convert_bytes_to_int32(image.begin() + 0x22);
-	uint32_t data_start = convert_bytes_to_int32(image.begin() + 0x0A);
-
-	std::cout << image.size() << std::endl;
-	std::cout << size << std::endl;
-
+	
 	return BMP {
-		.width = convert_bytes_to_int32(image.begin() + 0x12),
-		.height = convert_bytes_to_int32(image.begin() + 0x16),
-		.data = std::vector<unsigned char>(image.begin() + 54, image.begin() + data_start + size)
+		.width = width,
+		.height = height,
+		.data = std::vector<unsigned char>(image.begin() + offset, image.begin() + offset + size)
 	};
 }
 

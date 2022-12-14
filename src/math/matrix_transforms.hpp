@@ -8,6 +8,7 @@
 using namespace Eigen;
 
 namespace bork {
+namespace math { 
 
 template<typename T>
 concept floating_point = std::is_floating_point_v<T>;
@@ -108,4 +109,5 @@ Transform<T, 3, Projective> perspective_matrix(T fov, T aspect, T znear, T zfar)
 	return t;
 }
 
-}
+} // namespace closure of "math"
+} // namespace closure of "bork"
